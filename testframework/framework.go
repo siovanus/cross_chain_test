@@ -22,7 +22,7 @@ package testframework
 import (
 	"fmt"
 	log4 "github.com/alecthomas/log4go"
-	sdk "github.com/ontio/multi-chain-go-sdk"
+	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
 	"reflect"
 	"time"
 )
@@ -46,7 +46,7 @@ type TestFramework struct {
 	//Map the test case result for testing
 	testCaseRes map[string]bool
 	//OntologySdk object
-	ont *sdk.MultiChainSdk
+	ont *ontology_go_sdk.OntologySdk
 }
 
 //NewTestFramework return a TestFramework instance
@@ -93,16 +93,9 @@ func (this *TestFramework) Start(testCases []string) {
 func (this *TestFramework) runTestList(testCaseList []TestCase) {
 	this.onTestStart()
 	defer this.onTestFinish(testCaseList)
-	failNowCh := make(chan interface{}, 10)
-	ctx := NewTestFrameworkContext(this.ont, failNowCh)
+	ctx := NewTestFrameworkContext(this.ont)
 	for i, testCase := range testCaseList {
-		select {
-		case <-failNowCh:
-			this.onTestFailNow()
-			return
-		default:
-			this.runTest(i+1, ctx, testCase)
-		}
+		this.runTest(i+1, ctx, testCase)
 	}
 }
 
@@ -115,7 +108,7 @@ func (this *TestFramework) runTest(index int, ctx *TestFrameworkContext, testCas
 }
 
 //SetOntSdk ontology sdk instance to test framework
-func (this *TestFramework) SetOntSdk(ont *sdk.MultiChainSdk) {
+func (this *TestFramework) SetOntSdk(ont *ontology_go_sdk.OntologySdk) {
 	this.ont = ont
 }
 

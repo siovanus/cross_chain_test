@@ -20,20 +20,18 @@ package testframework
 
 import (
 	log4 "github.com/alecthomas/log4go"
-	sdk "github.com/ontio/multi-chain-go-sdk"
+	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
 )
 
 //TestFrameworkContext is the context for test case
 type TestFrameworkContext struct {
-	Ont       *sdk.MultiChainSdk //sdk to ontology
-	failNowCh chan interface{}
+	Ont *ontology_go_sdk.OntologySdk //sdk to ontology
 }
 
 //NewTestFrameworkContext return a TestFrameworkContext instance
-func NewTestFrameworkContext(ont *sdk.MultiChainSdk, failNowCh chan interface{}) *TestFrameworkContext {
+func NewTestFrameworkContext(ont *ontology_go_sdk.OntologySdk) *TestFrameworkContext {
 	return &TestFrameworkContext{
-		Ont:       ont,
-		failNowCh: failNowCh,
+		Ont: ont,
 	}
 }
 
@@ -50,17 +48,4 @@ func (this *TestFrameworkContext) LogError(arg0 interface{}, args ...interface{}
 //LogWarn log warning info in test case
 func (this *TestFrameworkContext) LogWarn(arg0 interface{}, args ...interface{}) {
 	log4.Warn(arg0, args...)
-}
-
-func (this *TestFrameworkContext) NewAccount() *sdk.Account {
-	return sdk.NewAccount()
-}
-
-//FailNow will stop test, and skip all haven't not test case
-func (this *TestFrameworkContext) FailNow() {
-	select {
-	case <-this.failNowCh:
-	default:
-		close(this.failNowCh)
-	}
 }

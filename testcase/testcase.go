@@ -18,10 +18,9 @@
 package testcase
 
 import (
-	"github.com/ontio/cross_chain_test/testcase/smartcontract"
+	"github.com/ontio/cross_chain_test/testframework"
 )
 
-//TestCase list
-func init() {
-	smartcontract.TestSmartContract()
+func SendOntToEthChain(ctx *testframework.TestFrameworkContext) bool {
+	return true
 }

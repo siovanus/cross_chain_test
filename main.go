@@ -19,15 +19,16 @@ package main
 
 import (
 	"flag"
-	log4 "github.com/alecthomas/log4go"
-	sdk "github.com/ontio/multi-chain-go-sdk"
-	"github.com/ontio/multi-chain/common/log"
-	"github.com/ontio/cross_chain_test/common"
-	_ "github.com/ontio/cross_chain_test/testcase"
-	"github.com/ontio/cross_chain_test/testframework"
 	"math/rand"
 	"strings"
 	"time"
+
+	log4 "github.com/alecthomas/log4go"
+	"github.com/ontio/cross_chain_test/common"
+	_ "github.com/ontio/cross_chain_test/testcase"
+	"github.com/ontio/cross_chain_test/testframework"
+	"github.com/ontio/multi-chain/common/log"
+	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
 )
 
 var (
@@ -55,8 +56,8 @@ func main() {
 		return
 	}
 
-	ontSdk := sdk.NewMultiChainSdk()
-	ontSdk.NewRpcClient().SetAddress(common.DefConfig.JsonRpcAddress)
+	ontSdk := ontology_go_sdk.NewOntologySdk()
+	ontSdk.NewRpcClient().SetAddress(common.DefConfig.OntJsonRpcAddress)
 	testCases := make([]string, 0)
 	if TestCases != "" {
 		testCases = strings.Split(TestCases, ",")

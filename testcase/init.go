@@ -15,13 +15,11 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with The ontology.  If not, see <http://www.gnu.org/licenses/>.
  */
-package smartcontract
+package testcase
 
-import (
-	"github.com/ontio/cross_chain_test/testcase/smartcontract/native"
-)
+import "github.com/ontio/cross_chain_test/testframework"
 
-//Register test case
-func TestSmartContract() {
-	native.TestNative()
+//TestCase list
+func init() {
+	testframework.TFramework.RegTestCase("SendOntToEthChain", SendOntToEthChain)
 }

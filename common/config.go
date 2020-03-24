@@ -33,7 +33,15 @@ var DefConfig = NewTestConfig()
 //Config object used by ontology-instance
 type TestConfig struct {
 	//JsonRpcAddress of ontology
-	JsonRpcAddress string
+	OntJsonRpcAddress string
+
+	//password of ont wallet
+	OntWalletPassword string
+
+	//ontology proxy contract address
+	OntProxyContractAddress string
+	GasPrice                uint64
+	GasLimit                uint64
 }
 
 //NewTestConfig retuen a TestConfig instance

@@ -1,3 +1,7 @@
 {
-  "JsonRpcAddress":"http://localhost:20336"
+  "OntJsonRpcAddress": "http://localhost:20336",
+  "OntWalletPassword": "1",
+  "OntProxyContractAddress": "",
+  "GasPrice": 500,
+  "GasLimit": 2000000
 }
