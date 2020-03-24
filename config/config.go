@@ -17,7 +17,7 @@
  */
 
 //common use fot ontology-tool
-package common
+package config
 
 import (
 	"encoding/json"
@@ -30,8 +30,20 @@ import (
 //Default config instance
 var DefConfig = NewTestConfig()
 
+const (
+	ONT_CHAIN_ID = 3
+	ETH_CHAIN_ID = 2
+	BTC_CHAIN_ID = 1
+)
+
 //Config object used by ontology-instance
 type TestConfig struct {
+	BtcxContractAddress string
+
+	EthURL string
+
+	EthProxyContract string
+
 	//JsonRpcAddress of ontology
 	OntJsonRpcAddress string
 

@@ -22,6 +22,7 @@ package testframework
 import (
 	"fmt"
 	log4 "github.com/alecthomas/log4go"
+	"github.com/ethereum/go-ethereum/ethclient"
 	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
 	"reflect"
 	"time"
@@ -46,7 +47,9 @@ type TestFramework struct {
 	//Map the test case result for testing
 	testCaseRes map[string]bool
 	//OntologySdk object
-	ont *ontology_go_sdk.OntologySdk
+	ontSdk *ontology_go_sdk.OntologySdk
+	//Eth client
+	ethClient *ethclient.Client
 }
 
 //NewTestFramework return a TestFramework instance
@@ -93,7 +96,7 @@ func (this *TestFramework) Start(testCases []string) {
 func (this *TestFramework) runTestList(testCaseList []TestCase) {
 	this.onTestStart()
 	defer this.onTestFinish(testCaseList)
-	ctx := NewTestFrameworkContext(this.ont)
+	ctx := NewTestFrameworkContext(this.ontSdk, this.ethClient)
 	for i, testCase := range testCaseList {
 		this.runTest(i+1, ctx, testCase)
 	}
@@ -108,13 +111,18 @@ func (this *TestFramework) runTest(index int, ctx *TestFrameworkContext, testCas
 }
 
 //SetOntSdk ontology sdk instance to test framework
-func (this *TestFramework) SetOntSdk(ont *ontology_go_sdk.OntologySdk) {
-	this.ont = ont
+func (this *TestFramework) SetOntSdk(ontSdk *ontology_go_sdk.OntologySdk) {
+	this.ontSdk = ontSdk
+}
+
+//SetEthClient instance to test framework
+func (this *TestFramework) SetEthClient(ethClient *ethclient.Client) {
+	this.ethClient = ethClient
 }
 
 //onTestStart invoke at the beginning of test
 func (this *TestFramework) onTestStart() {
-	version, _ := this.ont.GetVersion()
+	version, _ := this.ontSdk.GetVersion()
 	log4.Info("===============================================================")
 	log4.Info("-------Ontology Test Start Version:%s", version)
 	log4.Info("===============================================================")

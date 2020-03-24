@@ -20,18 +20,21 @@ package testframework
 
 import (
 	log4 "github.com/alecthomas/log4go"
+	"github.com/ethereum/go-ethereum/ethclient"
 	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
 )
 
 //TestFrameworkContext is the context for test case
 type TestFrameworkContext struct {
-	Ont *ontology_go_sdk.OntologySdk //sdk to ontology
+	OntSdk    *ontology_go_sdk.OntologySdk //sdk to ontology
+	EthClient *ethclient.Client
 }
 
 //NewTestFrameworkContext return a TestFrameworkContext instance
-func NewTestFrameworkContext(ont *ontology_go_sdk.OntologySdk) *TestFrameworkContext {
+func NewTestFrameworkContext(ontSdk *ontology_go_sdk.OntologySdk, ethClient *ethclient.Client) *TestFrameworkContext {
 	return &TestFrameworkContext{
-		Ont: ont,
+		OntSdk:    ontSdk,
+		EthClient: ethClient,
 	}
 }
 

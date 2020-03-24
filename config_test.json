@@ -1,4 +1,7 @@
 {
+  "BtcxContractAddress": "",
+  "EthURL": "https://ropsten.infura.io/v3/1ba5f3635395470e9a3f19ba7a852144",
+  "EthProxyContract": "0x644d59821becfcc214199354a6f2f58dbab206c4",
   "OntJsonRpcAddress": "http://localhost:20336",
   "OntWalletPassword": "1",
   "OntProxyContractAddress": "",

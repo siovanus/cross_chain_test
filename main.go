@@ -19,15 +19,15 @@ package main
 
 import (
 	"flag"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"math/rand"
 	"strings"
 	"time"
 
 	log4 "github.com/alecthomas/log4go"
-	"github.com/ontio/cross_chain_test/common"
+	"github.com/ontio/cross_chain_test/config"
 	_ "github.com/ontio/cross_chain_test/testcase"
 	"github.com/ontio/cross_chain_test/testframework"
-	"github.com/ontio/multi-chain/common/log"
 	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
 )
 
@@ -38,8 +38,8 @@ var (
 )
 
 func init() {
-	flag.StringVar(&TestConfig, "cfg", "./config_test.json", "Config of ontology-tool")
-	flag.StringVar(&LogConfig, "lfg", "./log4go.xml", "Log config of ontology-tool")
+	flag.StringVar(&TestConfig, "cfg", "./config_test.json", "Config of cross_chain_test")
+	flag.StringVar(&LogConfig, "lfg", "./log4go.xml", "Log config of cross_chain_test")
 	flag.StringVar(&TestCases, "t", "", "Test case to run. use ',' to split test case")
 	flag.Parse()
 }
@@ -47,22 +47,29 @@ func init() {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	log4.LoadConfiguration(LogConfig)
-	log.InitLog(1) //init log module in ontology
 	defer time.Sleep(time.Second)
 
-	err := common.DefConfig.Init(TestConfig)
+	err := config.DefConfig.Init(TestConfig)
 	if err != nil {
 		log4.Error("DefConfig.Init error:%s", err)
 		return
 	}
 
 	ontSdk := ontology_go_sdk.NewOntologySdk()
-	ontSdk.NewRpcClient().SetAddress(common.DefConfig.OntJsonRpcAddress)
+	ontSdk.NewRpcClient().SetAddress(config.DefConfig.OntJsonRpcAddress)
+
+	ethClient, err := ethclient.Dial(config.DefConfig.EthURL)
+	if err != nil {
+		log4.Error("cannot dial sync node, err: %s", err)
+		return
+	}
+
 	testCases := make([]string, 0)
 	if TestCases != "" {
 		testCases = strings.Split(TestCases, ",")
 	}
 	testframework.TFramework.SetOntSdk(ontSdk)
+	testframework.TFramework.SetEthClient(ethClient)
 	//Start run test case
 	testframework.TFramework.Start(testCases)
 }
