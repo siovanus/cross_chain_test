@@ -38,18 +38,20 @@ const (
 
 //Config object used by ontology-instance
 type TestConfig struct {
+	BtcRestAddr         string
+	BtcRestUser         string
+	BtcRestPwd          string
 	BtcxContractAddress string
+	BtcFee              int64
+	BtcRedeem           string
 
-	EthURL string
-
+	EthURL           string
 	EthProxyContract string
 
 	//JsonRpcAddress of ontology
 	OntJsonRpcAddress string
-
 	//password of ont wallet
 	OntWalletPassword string
-
 	//ontology proxy contract address
 	OntProxyContractAddress string
 	GasPrice                uint64

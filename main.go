@@ -19,15 +19,16 @@ package main
 
 import (
 	"flag"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"math/rand"
 	"strings"
 	"time"
 
 	log4 "github.com/alecthomas/log4go"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ontio/cross_chain_test/config"
 	_ "github.com/ontio/cross_chain_test/testcase"
 	"github.com/ontio/cross_chain_test/testframework"
+	"github.com/ontio/cross_chain_test/utils"
 	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
 )
 
@@ -38,7 +39,7 @@ var (
 )
 
 func init() {
-	flag.StringVar(&TestConfig, "cfg", "./config_test.json", "Config of cross_chain_test")
+	flag.StringVar(&TestConfig, "cfg", "./config.json", "Config of cross_chain_test")
 	flag.StringVar(&LogConfig, "lfg", "./log4go.xml", "Log config of cross_chain_test")
 	flag.StringVar(&TestCases, "t", "", "Test case to run. use ',' to split test case")
 	flag.Parse()
@@ -64,12 +65,15 @@ func main() {
 		return
 	}
 
+	cli := utils.NewRestCli(config.DefConfig.BtcRestAddr, config.DefConfig.BtcRestUser, config.DefConfig.BtcRestPwd)
+
 	testCases := make([]string, 0)
 	if TestCases != "" {
 		testCases = strings.Split(TestCases, ",")
 	}
 	testframework.TFramework.SetOntSdk(ontSdk)
 	testframework.TFramework.SetEthClient(ethClient)
+	testframework.TFramework.SetBtcCli(cli)
 	//Start run test case
 	testframework.TFramework.Start(testCases)
 }
