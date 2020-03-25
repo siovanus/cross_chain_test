@@ -41,7 +41,8 @@ type TestConfig struct {
 	BtcRestAddr         string
 	BtcRestUser         string
 	BtcRestPwd          string
-	BtcxContractAddress string
+	BtceContractAddress string
+	BtcoContractAddress string
 	BtcFee              int64
 	BtcRedeem           string
 

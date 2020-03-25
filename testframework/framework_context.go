@@ -27,18 +27,20 @@ import (
 
 //TestFrameworkContext is the context for test case
 type TestFrameworkContext struct {
-	OntSdk    *ontology_go_sdk.OntologySdk //sdk to ontology
-	EthClient *ethclient.Client
-	BtcCli    *utils.RestCli
+	OntSdk       *ontology_go_sdk.OntologySdk //sdk to ontology
+	EthClient    *ethclient.Client
+	BtcCli       *utils.RestCli
+	NonceManager *utils.NonceManager
 }
 
 //NewTestFrameworkContext return a TestFrameworkContext instance
 func NewTestFrameworkContext(ontSdk *ontology_go_sdk.OntologySdk, ethClient *ethclient.Client,
-	btcCli *utils.RestCli) *TestFrameworkContext {
+	btcCli *utils.RestCli, nonceManager *utils.NonceManager) *TestFrameworkContext {
 	return &TestFrameworkContext{
-		OntSdk:    ontSdk,
-		EthClient: ethClient,
-		BtcCli:    btcCli,
+		OntSdk:       ontSdk,
+		EthClient:    ethClient,
+		BtcCli:       btcCli,
+		NonceManager: nonceManager,
 	}
 }
 

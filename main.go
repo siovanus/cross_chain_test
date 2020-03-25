@@ -64,7 +64,7 @@ func main() {
 		log4.Error("cannot dial sync node, err: %s", err)
 		return
 	}
-
+	noncemanager := utils.NewNonceManager(ethClient)
 	cli := utils.NewRestCli(config.DefConfig.BtcRestAddr, config.DefConfig.BtcRestUser, config.DefConfig.BtcRestPwd)
 
 	testCases := make([]string, 0)
@@ -73,6 +73,7 @@ func main() {
 	}
 	testframework.TFramework.SetOntSdk(ontSdk)
 	testframework.TFramework.SetEthClient(ethClient)
+	testframework.TFramework.SetNonceManager(noncemanager)
 	testframework.TFramework.SetBtcCli(cli)
 	//Start run test case
 	testframework.TFramework.Start(testCases)

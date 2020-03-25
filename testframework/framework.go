@@ -51,6 +51,8 @@ type TestFramework struct {
 	ontSdk *ontology_go_sdk.OntologySdk
 	//Eth client
 	ethClient *ethclient.Client
+	//eth nonce manager
+	nonceManager *utils.NonceManager
 	//btc cli
 	btcCli *utils.RestCli
 }
@@ -99,7 +101,7 @@ func (this *TestFramework) Start(testCases []string) {
 func (this *TestFramework) runTestList(testCaseList []TestCase) {
 	this.onTestStart()
 	defer this.onTestFinish(testCaseList)
-	ctx := NewTestFrameworkContext(this.ontSdk, this.ethClient, this.btcCli)
+	ctx := NewTestFrameworkContext(this.ontSdk, this.ethClient, this.btcCli, this.nonceManager)
 	for i, testCase := range testCaseList {
 		this.runTest(i+1, ctx, testCase)
 	}
@@ -124,6 +126,11 @@ func (this *TestFramework) SetEthClient(ethClient *ethclient.Client) {
 }
 
 //SetEthClient instance to test framework
+func (this *TestFramework) SetNonceManager(nonceManager *utils.NonceManager) {
+	this.nonceManager = nonceManager
+}
+
+//SetBtcCli instance to test framework
 func (this *TestFramework) SetBtcCli(btcCli *utils.RestCli) {
 	this.btcCli = btcCli
 }

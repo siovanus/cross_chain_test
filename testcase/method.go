@@ -2,18 +2,31 @@ package testcase
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ontio/cross_chain_test/eth_contract_abi/btcx_abi"
+	"github.com/ontio/cross_chain_test/eth_contract_abi/erc20_abi"
+	"math/big"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ontio/cross_chain_test/config"
+	lock_proxy_abi "github.com/ontio/cross_chain_test/eth_contract_abi/lockproxy_abi"
 	"github.com/ontio/cross_chain_test/testframework"
 	"github.com/ontio/cross_chain_test/utils"
 	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
@@ -119,9 +132,9 @@ func SendOEP4CrossEth(ctx *testframework.TestFrameworkContext, contractAddress s
 	return nil
 }
 
-func SendBtcxCrossBtc(ctx *testframework.TestFrameworkContext, signer *ontology_go_sdk.Account,
+func SendBtcoCrossBtc(ctx *testframework.TestFrameworkContext, signer *ontology_go_sdk.Account,
 	btcAddress string, amount uint64) error {
-	btcxContractAddress, err := ontcommon.AddressFromHexString(config.DefConfig.BtcxContractAddress)
+	btcxContractAddress, err := ontcommon.AddressFromHexString(config.DefConfig.BtcoContractAddress)
 	if err != nil {
 		return fmt.Errorf("SendBtcxCrossBtc, ontcommon.AddressFromHexString error: %s", err)
 	}
@@ -262,74 +275,247 @@ HERE:
 	return nil
 }
 
-//func SendEthCrossOnt(ctx *testframework.TestFrameworkContext, ontAddress string, amount uint64) error {
-//	gasPrice, err := ctx.EthClient.SuggestGasPrice(context.Background())
-//	if err != nil {
-//		return fmt.Errorf("SendEthCrossOnt, get suggest gas price failed error: %s", err.Error())
-//	}
-//	contractabi, err := abi.JSON(strings.NewReader(lock_proxy_abi.LockProxyABI))
-//	if err != nil {
-//		return fmt.Errorf("SendEthCrossOnt, abi.JSON error:" + err.Error())
-//	}
-//	cross2OntAddress, err := ontcommon.AddressFromBase58(ontAddress)
-//	if err != nil {
-//		return fmt.Errorf("SendEthCrossOnt, ontcommon.AddressFromBase58 error:" + err.Error())
-//	}
-//	assetaddress := ethcommon.HexToAddress("0000000000000000000000000000000000000000")
-//	txData, err := contractabi.Pack("lock", assetaddress, uint64(config.ONT_CHAIN_ID), cross2OntAddress[:],
-//		big.NewInt(int64(amount)))
-//	if err != nil {
-//		return fmt.Errorf("SendEthCrossOnt, contractabi.Pack error:" + err.Error())
-//	}
-//
-//	contractAddr := ethcommon.HexToAddress(config.DefConfig.EthProxyContract)
-//	signerAccount := self.ethSigner.GetAccount(index)
-//	callMsg := ethereum.CallMsg{
-//		From: signerAccount.Address, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
-//		Value: big.NewInt(int64(self.cfg.Cross2OntAmount)), Data: txData,
-//	}
-//	gasLimit, err := ctx.EthClient.EstimateGas(context.Background(), callMsg)
-//	if err != nil {
-//		return fmt.Errorf("SendEthCrossOnt, estimate gas limit error: %s", err.Error())
-//	}
-//
-//	nonceManager := tools.NewNonceManager(ctx.EthClient)
-//	nonce := nonceManager.GetAddressNonce(signerAccount.Address)
-//	tx := types.NewTransaction(nonce, contractAddr, big.NewInt(int64(self.cfg.Cross2OntAmount)), gasLimit, gasPrice, txData)
-//	bf := new(bytes.Buffer)
-//	rlp.Encode(bf, tx)
-//
-//	rawtx := hexutil.Encode(bf.Bytes())
-//	signedtx, err := self.ethSigner.SignRawTx(rawtx, index)
-//	if err != nil {
-//		return fmt.Errorf("SendEthCrossOnt, sign raw tx error: %s", err.Error())
-//	}
-//
-//	err = ctx.EthClient.SendTransaction(context.Background(), signedtx)
-//	if err != nil {
-//		return fmt.Errorf("SendEthCrossOnt, send transaction error:%s", err.Error())
-//	}
-//	WaitTransactionConfirm(ctx.EthClient, signedtx.Hash())
-//
-//	return nil
-//}
-//
-//func WaitTransactionConfirm(ethclient *ethclient.Client, hash common.Hash) {
-//	//
-//	errNum := 0
-//	for errNum < 100 {
-//		time.Sleep(time.Second * 1)
-//		_, ispending, err := ethclient.TransactionByHash(context.Background(), hash)
-//		if err != nil {
-//			log.Infof("query transaction %s error: %s", hash.String(), err.Error())
-//			errNum++
-//			continue
-//		}
-//		log.Infof("transaction %s is pending: %d", hash.String(), ispending)
-//		if ispending == true {
-//			continue
-//		} else {
-//			break
-//		}
-//	}
-//}
+func ApproveERC20(ctx *testframework.TestFrameworkContext, erc20ContractAddress, ethPriKey string, amount uint64) error {
+	gasPrice, err := ctx.EthClient.SuggestGasPrice(context.Background())
+	if err != nil {
+		return fmt.Errorf("ApproveERC20, get suggest sas price failed error: %s", err.Error())
+	}
+	// approve erc20
+	contractabi, err := abi.JSON(strings.NewReader(erc20_abi.ERC20ABI))
+	if err != nil {
+		return fmt.Errorf("ApproveERC20, err:" + err.Error())
+	}
+	proxyContract := ethcommon.HexToAddress(config.DefConfig.EthProxyContract)
+	txData, err := contractabi.Pack("approve", proxyContract, big.NewInt(int64(amount)))
+	if err != nil {
+		return fmt.Errorf("ApproveERC20, contractabi.Pack error:" + err.Error())
+	}
+
+	contractAddr := ethcommon.HexToAddress(erc20ContractAddress)
+	priKey, err := crypto.HexToECDSA(ethPriKey)
+	if err != nil {
+		return fmt.Errorf("ApproveERC20, cannot decode private key")
+	}
+	fromAddress := crypto.PubkeyToAddress(priKey.PublicKey)
+	callMsg := ethereum.CallMsg{
+		From: fromAddress, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
+		Value: big.NewInt(0), Data: txData,
+	}
+	gasLimit, err := ctx.EthClient.EstimateGas(context.Background(), callMsg)
+	if err != nil {
+		return fmt.Errorf("ApproveERC20, estimate gas limit error: %s", err.Error())
+	}
+	nonce := ctx.NonceManager.GetAddressNonce(fromAddress)
+	tx := types.NewTransaction(nonce, contractAddr, big.NewInt(0), gasLimit, gasPrice, txData)
+	bf := new(bytes.Buffer)
+	rlp.Encode(bf, tx)
+
+	rawtx := hexutil.Encode(bf.Bytes())
+	unsignedTx, err := utils.DeserializeTx(rawtx)
+	if err != nil {
+		return fmt.Errorf("ApproveERC20, utils.DeserializeTx error: %s", err.Error())
+	}
+	signedtx, err := types.SignTx(unsignedTx, types.HomesteadSigner{}, priKey)
+	if err != nil {
+		return fmt.Errorf("ApproveERC20, types.SignTx error: %s", err.Error())
+	}
+
+	err = ctx.EthClient.SendTransaction(context.Background(), signedtx)
+	if err != nil {
+		return fmt.Errorf("ApproveERC20, send transaction error:%s", err.Error())
+	}
+	WaitTransactionConfirm(ctx.EthClient, signedtx.Hash())
+	return nil
+}
+
+func SendEthCrossOnt(ctx *testframework.TestFrameworkContext, ethPriKey, ontAddress string, amount uint64) error {
+	gasPrice, err := ctx.EthClient.SuggestGasPrice(context.Background())
+	if err != nil {
+		return fmt.Errorf("SendEthCrossOnt, get suggest gas price failed error: %s", err.Error())
+	}
+	contractabi, err := abi.JSON(strings.NewReader(lock_proxy_abi.LockProxyABI))
+	if err != nil {
+		return fmt.Errorf("SendEthCrossOnt, abi.JSON error:" + err.Error())
+	}
+	toAddress, err := ontcommon.AddressFromBase58(ontAddress)
+	if err != nil {
+		return fmt.Errorf("SendEthCrossOnt, ontcommon.AddressFromBase58 error:" + err.Error())
+	}
+	assetaddress := ethcommon.HexToAddress("0000000000000000000000000000000000000000")
+	txData, err := contractabi.Pack("lock", assetaddress, uint64(config.ONT_CHAIN_ID), toAddress[:],
+		big.NewInt(int64(amount)))
+	if err != nil {
+		return fmt.Errorf("SendEthCrossOnt, contractabi.Pack error:" + err.Error())
+	}
+
+	contractAddr := ethcommon.HexToAddress(config.DefConfig.EthProxyContract)
+	priKey, err := crypto.HexToECDSA(ethPriKey)
+	if err != nil {
+		return fmt.Errorf("SendEthCrossOnt, cannot decode private key")
+	}
+	fromAddress := crypto.PubkeyToAddress(priKey.PublicKey)
+	callMsg := ethereum.CallMsg{
+		From: fromAddress, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
+		Value: big.NewInt(int64(amount)), Data: txData,
+	}
+	gasLimit, err := ctx.EthClient.EstimateGas(context.Background(), callMsg)
+	if err != nil {
+		return fmt.Errorf("SendEthCrossOnt, estimate gas limit error: %s", err.Error())
+	}
+
+	nonce := ctx.NonceManager.GetAddressNonce(fromAddress)
+	tx := types.NewTransaction(nonce, contractAddr, big.NewInt(int64(amount)), gasLimit, gasPrice, txData)
+	bf := new(bytes.Buffer)
+	rlp.Encode(bf, tx)
+
+	rawtx := hexutil.Encode(bf.Bytes())
+	unsignedTx, err := utils.DeserializeTx(rawtx)
+	if err != nil {
+		return fmt.Errorf("SendEthCrossOnt, utils.DeserializeTx error: %s", err.Error())
+	}
+	signedtx, err := types.SignTx(unsignedTx, types.HomesteadSigner{}, priKey)
+	if err != nil {
+		return fmt.Errorf("SendEthCrossOnt, types.SignTx error: %s", err.Error())
+	}
+
+	err = ctx.EthClient.SendTransaction(context.Background(), signedtx)
+	if err != nil {
+		return fmt.Errorf("SendEthCrossOnt, send transaction error:%s", err.Error())
+	}
+	WaitTransactionConfirm(ctx.EthClient, signedtx.Hash())
+	return nil
+}
+
+func SendERC20CrossOnt(ctx *testframework.TestFrameworkContext, erc20ContractAddress, ethPriKey, ontAddress string, amount uint64) error {
+	gasPrice, err := ctx.EthClient.SuggestGasPrice(context.Background())
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, get suggest gas price failed error: %s", err.Error())
+	}
+	contractabi, err := abi.JSON(strings.NewReader(lock_proxy_abi.LockProxyABI))
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, abi.JSON error:" + err.Error())
+	}
+	toAddress, err := ontcommon.AddressFromBase58(ontAddress)
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, ontcommon.AddressFromBase58 error:" + err.Error())
+	}
+	assetaddress := ethcommon.HexToAddress(erc20ContractAddress)
+	txData, err := contractabi.Pack("lock", assetaddress, uint64(config.ONT_CHAIN_ID), toAddress[:],
+		big.NewInt(int64(amount)))
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, contractabi.Pack error:" + err.Error())
+	}
+
+	contractAddr := ethcommon.HexToAddress(config.DefConfig.EthProxyContract)
+	priKey, err := crypto.HexToECDSA(ethPriKey)
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, cannot decode private key")
+	}
+	fromAddress := crypto.PubkeyToAddress(priKey.PublicKey)
+	callMsg := ethereum.CallMsg{
+		From: fromAddress, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
+		Value: big.NewInt(int64(0)), Data: txData,
+	}
+	gasLimit, err := ctx.EthClient.EstimateGas(context.Background(), callMsg)
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, estimate gas limit error: %s", err.Error())
+	}
+
+	nonce := ctx.NonceManager.GetAddressNonce(fromAddress)
+	tx := types.NewTransaction(nonce, contractAddr, big.NewInt(int64(0)), gasLimit, gasPrice, txData)
+	bf := new(bytes.Buffer)
+	rlp.Encode(bf, tx)
+
+	rawtx := hexutil.Encode(bf.Bytes())
+	unsignedTx, err := utils.DeserializeTx(rawtx)
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, utils.DeserializeTx error: %s", err.Error())
+	}
+	signedtx, err := types.SignTx(unsignedTx, types.HomesteadSigner{}, priKey)
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, types.SignTx error: %s", err.Error())
+	}
+
+	err = ctx.EthClient.SendTransaction(context.Background(), signedtx)
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, send transaction error:%s", err.Error())
+	}
+	WaitTransactionConfirm(ctx.EthClient, signedtx.Hash())
+	return nil
+}
+
+func SendBtceCrossBtc(ctx *testframework.TestFrameworkContext, ethPriKey, ontAddress string, amount uint64) error {
+	gasPrice, err := ctx.EthClient.SuggestGasPrice(context.Background())
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, get suggest gas price failed error: %s", err.Error())
+	}
+	contractabi, err := abi.JSON(strings.NewReader(btcx_abi.BTCXABI))
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, abi.JSON error:" + err.Error())
+	}
+	toAddress, err := ontcommon.AddressFromBase58(ontAddress)
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, ontcommon.AddressFromBase58 error:" + err.Error())
+	}
+	assetaddress := ethcommon.HexToAddress(config.DefConfig.BtceContractAddress)
+	txData, err := contractabi.Pack("lock", assetaddress, uint64(config.ONT_CHAIN_ID), toAddress[:],
+		big.NewInt(int64(amount)))
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, contractabi.Pack error:" + err.Error())
+	}
+
+	contractAddr := ethcommon.HexToAddress(config.DefConfig.EthProxyContract)
+	priKey, err := crypto.HexToECDSA(ethPriKey)
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, cannot decode private key")
+	}
+	fromAddress := crypto.PubkeyToAddress(priKey.PublicKey)
+	callMsg := ethereum.CallMsg{
+		From: fromAddress, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
+		Value: big.NewInt(int64(0)), Data: txData,
+	}
+	gasLimit, err := ctx.EthClient.EstimateGas(context.Background(), callMsg)
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, estimate gas limit error: %s", err.Error())
+	}
+
+	nonce := ctx.NonceManager.GetAddressNonce(fromAddress)
+	tx := types.NewTransaction(nonce, contractAddr, big.NewInt(int64(0)), gasLimit, gasPrice, txData)
+	bf := new(bytes.Buffer)
+	rlp.Encode(bf, tx)
+
+	rawtx := hexutil.Encode(bf.Bytes())
+	unsignedTx, err := utils.DeserializeTx(rawtx)
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, utils.DeserializeTx error: %s", err.Error())
+	}
+	signedtx, err := types.SignTx(unsignedTx, types.HomesteadSigner{}, priKey)
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, types.SignTx error: %s", err.Error())
+	}
+
+	err = ctx.EthClient.SendTransaction(context.Background(), signedtx)
+	if err != nil {
+		return fmt.Errorf("SendERC20CrossOnt, send transaction error:%s", err.Error())
+	}
+	WaitTransactionConfirm(ctx.EthClient, signedtx.Hash())
+	return nil
+}
+
+func WaitTransactionConfirm(ethclient *ethclient.Client, hash ethcommon.Hash) {
+	//
+	errNum := 0
+	for errNum < 100 {
+		time.Sleep(time.Second * 1)
+		_, ispending, err := ethclient.TransactionByHash(context.Background(), hash)
+		if err != nil {
+			errNum++
+			continue
+		}
+		if ispending == true {
+			continue
+		} else {
+			break
+		}
+	}
+}
