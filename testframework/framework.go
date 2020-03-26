@@ -21,12 +21,13 @@ package testframework
 
 import (
 	"fmt"
-	log4 "github.com/alecthomas/log4go"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ontio/cross_chain_test/utils"
-	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
 	"reflect"
 	"time"
+
+	log4 "github.com/alecthomas/log4go"
+	"github.com/ontio/cross_chain_test/utils"
+	multi_chain_go_sdk "github.com/ontio/multi-chain-go-sdk"
+	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
 )
 
 //Default TestFramework instance
@@ -49,8 +50,10 @@ type TestFramework struct {
 	testCaseRes map[string]bool
 	//OntologySdk object
 	ontSdk *ontology_go_sdk.OntologySdk
+	//relayer chain sdk object
+	rcSdk *multi_chain_go_sdk.MultiChainSdk
 	//Eth client
-	ethClient *ethclient.Client
+	ethTools *utils.ETHTools
 	//eth nonce manager
 	nonceManager *utils.NonceManager
 	//btc cli
@@ -101,10 +104,14 @@ func (this *TestFramework) Start(testCases []string) {
 func (this *TestFramework) runTestList(testCaseList []TestCase) {
 	this.onTestStart()
 	defer this.onTestFinish(testCaseList)
-	ctx := NewTestFrameworkContext(this.ontSdk, this.ethClient, this.btcCli, this.nonceManager)
+	ctx := NewTestFrameworkContext(this.ontSdk, this.rcSdk, this.ethTools, this.btcCli, this.nonceManager)
+	go MonitorOnt(ctx)
+	go MonitorRChain(ctx)
+	go MonitorEthChain(ctx)
 	for i, testCase := range testCaseList {
 		this.runTest(i+1, ctx, testCase)
 	}
+	go ReportPending(ctx)
 }
 
 //Run a single test case
@@ -120,9 +127,14 @@ func (this *TestFramework) SetOntSdk(ontSdk *ontology_go_sdk.OntologySdk) {
 	this.ontSdk = ontSdk
 }
 
+//SetRcSdk relaye chain sdk instance to test framework
+func (this *TestFramework) SetRcSdk(rcSdk *multi_chain_go_sdk.MultiChainSdk) {
+	this.rcSdk = rcSdk
+}
+
 //SetEthClient instance to test framework
-func (this *TestFramework) SetEthClient(ethClient *ethclient.Client) {
-	this.ethClient = ethClient
+func (this *TestFramework) SetEthTools(ethTools *utils.ETHTools) {
+	this.ethTools = ethTools
 }
 
 //SetEthClient instance to test framework

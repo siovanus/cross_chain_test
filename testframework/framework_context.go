@@ -19,8 +19,10 @@
 package testframework
 
 import (
+	multi_chain_go_sdk "github.com/ontio/multi-chain-go-sdk"
+	"sync"
+
 	log4 "github.com/alecthomas/log4go"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ontio/cross_chain_test/utils"
 	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
 )
@@ -28,19 +30,25 @@ import (
 //TestFrameworkContext is the context for test case
 type TestFrameworkContext struct {
 	OntSdk       *ontology_go_sdk.OntologySdk //sdk to ontology
-	EthClient    *ethclient.Client
+	RcSdk        *multi_chain_go_sdk.MultiChainSdk
+	EthTools     *utils.ETHTools
 	BtcCli       *utils.RestCli
 	NonceManager *utils.NonceManager
+	TxMap        map[string]string
+	Lock         *sync.Mutex
 }
 
 //NewTestFrameworkContext return a TestFrameworkContext instance
-func NewTestFrameworkContext(ontSdk *ontology_go_sdk.OntologySdk, ethClient *ethclient.Client,
-	btcCli *utils.RestCli, nonceManager *utils.NonceManager) *TestFrameworkContext {
+func NewTestFrameworkContext(ontSdk *ontology_go_sdk.OntologySdk, rcSdk *multi_chain_go_sdk.MultiChainSdk,
+	ethTools *utils.ETHTools, btcCli *utils.RestCli, nonceManager *utils.NonceManager) *TestFrameworkContext {
 	return &TestFrameworkContext{
 		OntSdk:       ontSdk,
-		EthClient:    ethClient,
+		RcSdk:        rcSdk,
+		EthTools:     ethTools,
 		BtcCli:       btcCli,
 		NonceManager: nonceManager,
+		TxMap:        make(map[string]string),
+		Lock:         new(sync.Mutex),
 	}
 }
 

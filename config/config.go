@@ -46,8 +46,9 @@ type TestConfig struct {
 	BtcFee              int64
 	BtcRedeem           string
 
-	EthURL           string
-	EthProxyContract string
+	EthURL                       string
+	EthProxyContract             string
+	EthCrossChainContractAddress string
 
 	//JsonRpcAddress of ontology
 	OntJsonRpcAddress string
@@ -57,6 +58,10 @@ type TestConfig struct {
 	OntProxyContractAddress string
 	GasPrice                uint64
 	GasLimit                uint64
+
+	RchainJsonRpcAddress string
+
+	ReportInterval uint64
 }
 
 //NewTestConfig retuen a TestConfig instance

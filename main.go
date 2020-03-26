@@ -19,17 +19,21 @@ package main
 
 import (
 	"flag"
-	"github.com/ontio/cross_chain_test/testcase"
+	"fmt"
 	"math/rand"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	log4 "github.com/alecthomas/log4go"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ontio/cross_chain_test/config"
+	"github.com/ontio/cross_chain_test/testcase"
 	_ "github.com/ontio/cross_chain_test/testcase"
 	"github.com/ontio/cross_chain_test/testframework"
 	"github.com/ontio/cross_chain_test/utils"
+	multi_chain_go_sdk "github.com/ontio/multi-chain-go-sdk"
 	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
 )
 
@@ -60,12 +64,12 @@ func main() {
 	ontSdk := ontology_go_sdk.NewOntologySdk()
 	ontSdk.NewRpcClient().SetAddress(config.DefConfig.OntJsonRpcAddress)
 
-	ethClient, err := ethclient.Dial(config.DefConfig.EthURL)
-	if err != nil {
-		log4.Error("cannot dial sync node, err: %s", err)
-		return
-	}
-	noncemanager := utils.NewNonceManager(ethClient)
+	rcSdk := multi_chain_go_sdk.NewMultiChainSdk()
+	rcSdk.NewRpcClient().SetAddress(config.DefConfig.RchainJsonRpcAddress)
+
+	ethTools := utils.NewEthTools(config.DefConfig.EthURL)
+
+	noncemanager := utils.NewNonceManager(ethTools.GetEthClient())
 	cli := utils.NewRestCli(config.DefConfig.BtcRestAddr, config.DefConfig.BtcRestUser, config.DefConfig.BtcRestPwd)
 
 	testCases := make([]string, 0)
@@ -73,11 +77,28 @@ func main() {
 		testCases = strings.Split(TestCases, ",")
 	}
 	testframework.TFramework.SetOntSdk(ontSdk)
-	testframework.TFramework.SetEthClient(ethClient)
+	testframework.TFramework.SetRcSdk(rcSdk)
+	testframework.TFramework.SetEthTools(ethTools)
 	testframework.TFramework.SetNonceManager(noncemanager)
 	testframework.TFramework.SetBtcCli(cli)
 
 	testcase.InitAccount()
 	//Start run test case
 	testframework.TFramework.Start(testCases)
+
+	waitToExit()
+}
+
+func waitToExit() {
+	exit := make(chan bool, 0)
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	go func() {
+		for sig := range sc {
+			fmt.Println("Ontology received exit signal:%v.", sig.String())
+			close(exit)
+			break
+		}
+	}()
+	<-exit
 }

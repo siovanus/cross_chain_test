@@ -5,12 +5,9 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/ontio/cross_chain_test/eth_contract_abi/btcx_abi"
-	"github.com/ontio/cross_chain_test/eth_contract_abi/erc20_abi"
 	"math/big"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -22,9 +19,10 @@ import (
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ontio/cross_chain_test/config"
+	"github.com/ontio/cross_chain_test/eth_contract_abi/btcx_abi"
+	"github.com/ontio/cross_chain_test/eth_contract_abi/erc20_abi"
 	lock_proxy_abi "github.com/ontio/cross_chain_test/eth_contract_abi/lockproxy_abi"
 	"github.com/ontio/cross_chain_test/testframework"
 	"github.com/ontio/cross_chain_test/utils"
@@ -83,6 +81,9 @@ func SendOntCrossEth(ctx *testframework.TestFrameworkContext, signer *ontology_g
 	if err != nil {
 		return fmt.Errorf("SendOntCrossEth, ctx.Ont.NeoVM.InvokeNeoVMContract error: %s", err)
 	}
+	ctx.Lock.Lock()
+	ctx.TxMap[hex.EncodeToString(txHash[:])] = "OntToEth"
+	ctx.Lock.Unlock()
 	ctx.LogInfo("SendOntCrossEth, tx success, txHash is: %s", txHash.ToHexString())
 	return nil
 }
@@ -103,6 +104,9 @@ func SendOngCrossEth(ctx *testframework.TestFrameworkContext, signer *ontology_g
 	if err != nil {
 		return fmt.Errorf("SendOngCrossEth, ctx.Ont.NeoVM.InvokeNeoVMContract error: %s", err)
 	}
+	ctx.Lock.Lock()
+	ctx.TxMap[hex.EncodeToString(txHash[:])] = "OngToEth"
+	ctx.Lock.Unlock()
 	ctx.LogInfo("SendOngCrossEth, tx success, txHash is: %s", txHash.ToHexString())
 	return nil
 }
@@ -127,6 +131,9 @@ func SendOEP4CrossEth(ctx *testframework.TestFrameworkContext, contractAddress s
 	if err != nil {
 		return fmt.Errorf("SendOEP4CrossEth, ctx.Ont.NeoVM.InvokeNeoVMContract error: %s", err)
 	}
+	ctx.Lock.Lock()
+	ctx.TxMap[hex.EncodeToString(txHash[:])] = "OEP4ToEth"
+	ctx.Lock.Unlock()
 	ctx.LogInfo("SendOEP4CrossEth, tx success, txHash is: %s", txHash.ToHexString())
 	return nil
 }
@@ -146,44 +153,53 @@ func SendBtcoCrossBtc(ctx *testframework.TestFrameworkContext, signer *ontology_
 	if err != nil {
 		return fmt.Errorf("SendBtcxCrossBtc, ctx.Ont.NeoVM.InvokeNeoVMContract error: %s", err)
 	}
+	ctx.Lock.Lock()
+	ctx.TxMap[hex.EncodeToString(txHash[:])] = "BtcoToBtc"
+	ctx.Lock.Unlock()
 	ctx.LogInfo("SendBtcxCrossBtc, tx success, txHash is: %s", txHash.ToHexString())
 	return nil
 }
 
 func SendBtcCrossOnt(ctx *testframework.TestFrameworkContext, btcSigner *utils.BtcSigner,
 	ontAddress string, amount int64) error {
-	err := sendBtcCross(ctx, config.ONT_CHAIN_ID, btcSigner, ontAddress, amount)
+	txid, err := sendBtcCross(ctx, config.ONT_CHAIN_ID, btcSigner, ontAddress, amount)
 	if err != nil {
 		return fmt.Errorf("SendBtcCrossOnt, sendBtcCross error: %s", err)
 	}
+	ctx.Lock.Lock()
+	ctx.TxMap[txid] = "BtcToOnt"
+	ctx.Lock.Unlock()
 	return nil
 }
 
 func SendBtcCrossEth(ctx *testframework.TestFrameworkContext, btcSigner *utils.BtcSigner,
 	ontAddress string, amount int64) error {
-	err := sendBtcCross(ctx, config.ETH_CHAIN_ID, btcSigner, ontAddress, amount)
+	txid, err := sendBtcCross(ctx, config.ETH_CHAIN_ID, btcSigner, ontAddress, amount)
 	if err != nil {
 		return fmt.Errorf("SendBtcCrossEth, sendBtcCross error: %s", err)
 	}
+	ctx.Lock.Lock()
+	ctx.TxMap[txid] = "BtcToEth"
+	ctx.Lock.Unlock()
 	return nil
 }
 
 func sendBtcCross(ctx *testframework.TestFrameworkContext, chainID uint64, btcSigner *utils.BtcSigner,
-	ontAddress string, amount int64) error {
+	ontAddress string, amount int64) (string, error) {
 	value := float64(amount) / btcutil.SatoshiPerBitcoin
 	fee := float64(config.DefConfig.BtcFee) / btcutil.SatoshiPerBitcoin
 
 	addrPubk, err := btcutil.NewAddressPubKey(btcSigner.WIF.PrivKey.PubKey().SerializeCompressed(), &chaincfg.TestNet3Params)
 	if err != nil {
-		return fmt.Errorf("sendBtcCross, Failed to new an address pubkey: %v", err)
+		return "", fmt.Errorf("sendBtcCross, Failed to new an address pubkey: %v", err)
 	}
 	pubkScript, err := txscript.PayToAddrScript(addrPubk.AddressPubKeyHash())
 	if err != nil {
-		return fmt.Errorf("sendBtcCross, Failed to build pubk script: %v", err)
+		return "", fmt.Errorf("sendBtcCross, Failed to build pubk script: %v", err)
 	}
 	data, err := utils.BuildData(chainID, 0, ontAddress)
 	if err != nil {
-		return fmt.Errorf("sendBtcCross, Failed to ge data: %v", err)
+		return "", fmt.Errorf("sendBtcCross, Failed to ge data: %v", err)
 	}
 
 	addr := addrPubk.EncodeAddress()
@@ -195,19 +211,19 @@ func sendBtcCross(ctx *testframework.TestFrameworkContext, chainID uint64, btcSi
 HERE:
 	cnt, err := ctx.BtcCli.GetBlockCount()
 	if err != nil {
-		return fmt.Errorf("sendBtcCross, rpc failed: %v", err)
+		return "", fmt.Errorf("sendBtcCross, rpc failed: %v", err)
 	}
 	utxos, err := ctx.BtcCli.ListUnspent(1, cnt, addr)
 	if err != nil {
-		return fmt.Errorf("sendBtcCross, rpc failed: %v", err)
+		return "", fmt.Errorf("sendBtcCross, rpc failed: %v", err)
 	}
 	total, err := btcutil.NewAmount(value + fee)
 	if err != nil {
-		return fmt.Errorf("sendBtcCross, failed to new amount: %v", err)
+		return "", fmt.Errorf("sendBtcCross, failed to new amount: %v", err)
 	}
 	selected, sumVal, err := utils.SelectUtxos(utxos, int64(total))
 	if err != nil {
-		return fmt.Errorf("sendBtcCross, failed to select utxo when build btc tx: %v", err)
+		return "", fmt.Errorf("sendBtcCross, failed to select utxo when build btc tx: %v", err)
 	}
 
 	//var prevPkScripts [][]byte
@@ -243,7 +259,7 @@ HERE:
 		}(),
 	})
 	if err != nil {
-		return fmt.Errorf("sendBtcCross, Failed to new an instance of Builder: %v", err)
+		return "", fmt.Errorf("sendBtcCross, Failed to new an instance of Builder: %v", err)
 	}
 
 	var buf bytes.Buffer
@@ -258,11 +274,11 @@ HERE:
 	//}
 	err = b.BuildSignedTx()
 	if err != nil || !b.IsSigned {
-		return fmt.Errorf("sendBtcCross, Failed to build signed transaction: %v", err)
+		return "", fmt.Errorf("sendBtcCross, Failed to build signed transaction: %v", err)
 	}
 	err = b.Tx.BtcEncode(&buf, wire.ProtocolVersion, wire.LatestEncoding)
 	if err != nil {
-		return fmt.Errorf("sendBtcCross, Failed to encode transaction: %v", err)
+		return "", fmt.Errorf("sendBtcCross, Failed to encode transaction: %v", err)
 	}
 
 	txid, err := ctx.BtcCli.SendRawTx(hex.EncodeToString(buf.Bytes()))
@@ -273,15 +289,19 @@ HERE:
 			fee = float64(newFee) / btcutil.SatoshiPerBitcoin
 			goto HERE
 		}
-		return fmt.Errorf("sendBtcCross, failed to send tx: %v", err)
+		return "", fmt.Errorf("sendBtcCross, failed to send tx: %v", err)
+	}
+	txidBytes, err := hex.DecodeString(txid)
+	if err != nil {
+		return "", fmt.Errorf("sendBtcCross, hex.DecodeString error: %v", err)
 	}
 	ctx.LogInfo("sendBtcCross, send tx %s(%f btc) to regression net(%s)", txid, value, ctx.BtcCli.Addr)
-	return nil
+	return hex.EncodeToString(ToArrayReverse(txidBytes)), nil
 }
 
 func ApproveERC20(ctx *testframework.TestFrameworkContext, erc20ContractAddress string,
 	ethSigner *utils.EthSigner, amount uint64) error {
-	gasPrice, err := ctx.EthClient.SuggestGasPrice(context.Background())
+	gasPrice, err := ctx.EthTools.GetEthClient().SuggestGasPrice(context.Background())
 	if err != nil {
 		return fmt.Errorf("ApproveERC20, get suggest sas price failed error: %s", err.Error())
 	}
@@ -301,7 +321,7 @@ func ApproveERC20(ctx *testframework.TestFrameworkContext, erc20ContractAddress 
 		From: ethSigner.Address, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
 		Value: big.NewInt(0), Data: txData,
 	}
-	gasLimit, err := ctx.EthClient.EstimateGas(context.Background(), callMsg)
+	gasLimit, err := ctx.EthTools.GetEthClient().EstimateGas(context.Background(), callMsg)
 	if err != nil {
 		return fmt.Errorf("ApproveERC20, estimate gas limit error: %s", err.Error())
 	}
@@ -320,16 +340,16 @@ func ApproveERC20(ctx *testframework.TestFrameworkContext, erc20ContractAddress 
 		return fmt.Errorf("ApproveERC20, types.SignTx error: %s", err.Error())
 	}
 
-	err = ctx.EthClient.SendTransaction(context.Background(), signedtx)
+	err = ctx.EthTools.GetEthClient().SendTransaction(context.Background(), signedtx)
 	if err != nil {
 		return fmt.Errorf("ApproveERC20, send transaction error:%s", err.Error())
 	}
-	WaitTransactionConfirm(ctx.EthClient, signedtx.Hash())
+	WaitTransactionConfirm(ctx.EthTools.GetEthClient(), signedtx.Hash())
 	return nil
 }
 
 func SendEthCrossOnt(ctx *testframework.TestFrameworkContext, ethSigner *utils.EthSigner, ontAddress string, amount uint64) error {
-	gasPrice, err := ctx.EthClient.SuggestGasPrice(context.Background())
+	gasPrice, err := ctx.EthTools.GetEthClient().SuggestGasPrice(context.Background())
 	if err != nil {
 		return fmt.Errorf("SendEthCrossOnt, get suggest gas price failed error: %s", err.Error())
 	}
@@ -353,7 +373,7 @@ func SendEthCrossOnt(ctx *testframework.TestFrameworkContext, ethSigner *utils.E
 		From: ethSigner.Address, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
 		Value: big.NewInt(int64(amount)), Data: txData,
 	}
-	gasLimit, err := ctx.EthClient.EstimateGas(context.Background(), callMsg)
+	gasLimit, err := ctx.EthTools.GetEthClient().EstimateGas(context.Background(), callMsg)
 	if err != nil {
 		return fmt.Errorf("SendEthCrossOnt, estimate gas limit error: %s", err.Error())
 	}
@@ -373,17 +393,20 @@ func SendEthCrossOnt(ctx *testframework.TestFrameworkContext, ethSigner *utils.E
 		return fmt.Errorf("SendEthCrossOnt, types.SignTx error: %s", err.Error())
 	}
 
-	err = ctx.EthClient.SendTransaction(context.Background(), signedtx)
+	err = ctx.EthTools.GetEthClient().SendTransaction(context.Background(), signedtx)
 	if err != nil {
 		return fmt.Errorf("SendEthCrossOnt, send transaction error:%s", err.Error())
 	}
-	WaitTransactionConfirm(ctx.EthClient, signedtx.Hash())
+	ctx.Lock.Lock()
+	ctx.TxMap[signedtx.Hash().String()[2:]] = "EthToOnt"
+	ctx.Lock.Unlock()
+	WaitTransactionConfirm(ctx.EthTools.GetEthClient(), signedtx.Hash())
 	return nil
 }
 
 func SendERC20CrossOnt(ctx *testframework.TestFrameworkContext, erc20ContractAddress, ontAddress string,
 	ethSigner *utils.EthSigner, amount uint64) error {
-	gasPrice, err := ctx.EthClient.SuggestGasPrice(context.Background())
+	gasPrice, err := ctx.EthTools.GetEthClient().SuggestGasPrice(context.Background())
 	if err != nil {
 		return fmt.Errorf("SendERC20CrossOnt, get suggest gas price failed error: %s", err.Error())
 	}
@@ -407,7 +430,7 @@ func SendERC20CrossOnt(ctx *testframework.TestFrameworkContext, erc20ContractAdd
 		From: ethSigner.Address, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
 		Value: big.NewInt(int64(0)), Data: txData,
 	}
-	gasLimit, err := ctx.EthClient.EstimateGas(context.Background(), callMsg)
+	gasLimit, err := ctx.EthTools.GetEthClient().EstimateGas(context.Background(), callMsg)
 	if err != nil {
 		return fmt.Errorf("SendERC20CrossOnt, estimate gas limit error: %s", err.Error())
 	}
@@ -427,16 +450,19 @@ func SendERC20CrossOnt(ctx *testframework.TestFrameworkContext, erc20ContractAdd
 		return fmt.Errorf("SendERC20CrossOnt, types.SignTx error: %s", err.Error())
 	}
 
-	err = ctx.EthClient.SendTransaction(context.Background(), signedtx)
+	err = ctx.EthTools.GetEthClient().SendTransaction(context.Background(), signedtx)
 	if err != nil {
 		return fmt.Errorf("SendERC20CrossOnt, send transaction error:%s", err.Error())
 	}
-	WaitTransactionConfirm(ctx.EthClient, signedtx.Hash())
+	ctx.Lock.Lock()
+	ctx.TxMap[signedtx.Hash().String()[2:]] = "ERC20ToOnt"
+	ctx.Lock.Unlock()
+	WaitTransactionConfirm(ctx.EthTools.GetEthClient(), signedtx.Hash())
 	return nil
 }
 
 func SendBtceCrossBtc(ctx *testframework.TestFrameworkContext, ethSigner *utils.EthSigner, ontAddress string, amount uint64) error {
-	gasPrice, err := ctx.EthClient.SuggestGasPrice(context.Background())
+	gasPrice, err := ctx.EthTools.GetEthClient().SuggestGasPrice(context.Background())
 	if err != nil {
 		return fmt.Errorf("SendERC20CrossOnt, get suggest gas price failed error: %s", err.Error())
 	}
@@ -460,7 +486,7 @@ func SendBtceCrossBtc(ctx *testframework.TestFrameworkContext, ethSigner *utils.
 		From: ethSigner.Address, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
 		Value: big.NewInt(int64(0)), Data: txData,
 	}
-	gasLimit, err := ctx.EthClient.EstimateGas(context.Background(), callMsg)
+	gasLimit, err := ctx.EthTools.GetEthClient().EstimateGas(context.Background(), callMsg)
 	if err != nil {
 		return fmt.Errorf("SendERC20CrossOnt, estimate gas limit error: %s", err.Error())
 	}
@@ -480,28 +506,22 @@ func SendBtceCrossBtc(ctx *testframework.TestFrameworkContext, ethSigner *utils.
 		return fmt.Errorf("SendERC20CrossOnt, types.SignTx error: %s", err.Error())
 	}
 
-	err = ctx.EthClient.SendTransaction(context.Background(), signedtx)
+	err = ctx.EthTools.GetEthClient().SendTransaction(context.Background(), signedtx)
 	if err != nil {
 		return fmt.Errorf("SendERC20CrossOnt, send transaction error:%s", err.Error())
 	}
-	WaitTransactionConfirm(ctx.EthClient, signedtx.Hash())
+	ctx.Lock.Lock()
+	ctx.TxMap[signedtx.Hash().String()[2:]] = "BtceToBtc"
+	ctx.Lock.Unlock()
+	WaitTransactionConfirm(ctx.EthTools.GetEthClient(), signedtx.Hash())
 	return nil
 }
 
-func WaitTransactionConfirm(ethclient *ethclient.Client, hash ethcommon.Hash) {
-	//
-	errNum := 0
-	for errNum < 100 {
-		time.Sleep(time.Second * 1)
-		_, ispending, err := ethclient.TransactionByHash(context.Background(), hash)
-		if err != nil {
-			errNum++
-			continue
-		}
-		if ispending == true {
-			continue
-		} else {
-			break
-		}
+func ToArrayReverse(arr []byte) []byte {
+	l := len(arr)
+	x := make([]byte, 0)
+	for i := l - 1; i >= 0; i-- {
+		x = append(x, arr[i])
 	}
+	return x
 }
