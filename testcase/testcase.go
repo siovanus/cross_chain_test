@@ -18,9 +18,36 @@
 package testcase
 
 import (
+	"fmt"
 	"github.com/ontio/cross_chain_test/testframework"
+	"github.com/ontio/cross_chain_test/utils"
+	ontology_go_sdk "github.com/ontio/ontology-go-sdk"
+	"os"
 )
 
+var ontSigner1 *ontology_go_sdk.Account
+var ethSigner1 *utils.EthSigner
+
+func InitAccount() {
+	var err error
+	ontSigner1, err = GetAccountByPath("ont_wallets/wallet1.dat")
+	if err != nil {
+		fmt.Printf("init, GetAccountByPath error: %s", err)
+		os.Exit(1)
+	}
+
+	ethSigner1, err = utils.NewEthSigner("56B446A2DE5EDFCCEE1581FBBA79E8BB5C269E28AB4C0487860AFB7E2C2D2B6E")
+	if err != nil {
+		fmt.Printf("init, utils.NewEthSigner error: %s", err)
+		os.Exit(1)
+	}
+}
+
 func SendOntToEthChain(ctx *testframework.TestFrameworkContext) bool {
+	err := SendOntCrossEth(ctx, ontSigner1, ethSigner1, 100)
+	if err != nil {
+		ctx.LogError("SendOntToEthChain, SendOntCrossEth error: %s", err)
+		return false
+	}
 	return true
 }

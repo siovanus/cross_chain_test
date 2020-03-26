@@ -19,6 +19,7 @@ package main
 
 import (
 	"flag"
+	"github.com/ontio/cross_chain_test/testcase"
 	"math/rand"
 	"strings"
 	"time"
@@ -75,6 +76,8 @@ func main() {
 	testframework.TFramework.SetEthClient(ethClient)
 	testframework.TFramework.SetNonceManager(noncemanager)
 	testframework.TFramework.SetBtcCli(cli)
+
+	testcase.InitAccount()
 	//Start run test case
 	testframework.TFramework.Start(testCases)
 }

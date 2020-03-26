@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ontio/cross_chain_test/eth_contract_abi/btcx_abi"
 	"github.com/ontio/cross_chain_test/eth_contract_abi/erc20_abi"
 	"math/big"
@@ -69,12 +68,12 @@ func ApproveOEP4(ctx *testframework.TestFrameworkContext, contractAddress string
 }
 
 func SendOntCrossEth(ctx *testframework.TestFrameworkContext, signer *ontology_go_sdk.Account,
-	ethAddress string, amount uint64) error {
+	ethSigner *utils.EthSigner, amount uint64) error {
 	proxyContractAddress, err := ontcommon.AddressFromHexString(config.DefConfig.OntProxyContractAddress)
 	if err != nil {
 		return fmt.Errorf("SendOntCrossEth, ontcommon.AddressFromHexString error: %s", err)
 	}
-	to := ethcommon.HexToAddress(ethAddress).Bytes()
+	to := ethSigner.Address.Bytes()
 	txHash, err := ctx.OntSdk.NeoVM.InvokeNeoVMContract(config.DefConfig.GasPrice, config.DefConfig.GasLimit,
 		signer,
 		signer,
@@ -89,12 +88,12 @@ func SendOntCrossEth(ctx *testframework.TestFrameworkContext, signer *ontology_g
 }
 
 func SendOngCrossEth(ctx *testframework.TestFrameworkContext, signer *ontology_go_sdk.Account,
-	ethAddress string, amount uint64) error {
+	ethSigner *utils.EthSigner, amount uint64) error {
 	proxyContractAddress, err := ontcommon.AddressFromHexString(config.DefConfig.OntProxyContractAddress)
 	if err != nil {
 		return fmt.Errorf("SendOngCrossEth, ontcommon.AddressFromHexString error: %s", err)
 	}
-	to := ethcommon.HexToAddress(ethAddress).Bytes()
+	to := ethSigner.Address.Bytes()
 	txHash, err := ctx.OntSdk.NeoVM.InvokeNeoVMContract(config.DefConfig.GasPrice, config.DefConfig.GasLimit,
 		signer,
 		signer,
@@ -109,7 +108,7 @@ func SendOngCrossEth(ctx *testframework.TestFrameworkContext, signer *ontology_g
 }
 
 func SendOEP4CrossEth(ctx *testframework.TestFrameworkContext, contractAddress string, signer *ontology_go_sdk.Account,
-	ethAddress string, amount uint64) error {
+	ethSigner *utils.EthSigner, amount uint64) error {
 	proxyContractAddress, err := ontcommon.AddressFromHexString(config.DefConfig.OntProxyContractAddress)
 	if err != nil {
 		return fmt.Errorf("SendOEP4CrossEth, ontcommon.AddressFromHexString error: %s", err)
@@ -118,7 +117,7 @@ func SendOEP4CrossEth(ctx *testframework.TestFrameworkContext, contractAddress s
 	if err != nil {
 		return fmt.Errorf("SendOEP4CrossEth, ontcommon.AddressFromHexString error: %s", err)
 	}
-	to := ethcommon.HexToAddress(ethAddress).Bytes()
+	to := ethSigner.Address.Bytes()
 	txHash, err := ctx.OntSdk.NeoVM.InvokeNeoVMContract(config.DefConfig.GasPrice, config.DefConfig.GasLimit,
 		signer,
 		signer,
@@ -275,7 +274,8 @@ HERE:
 	return nil
 }
 
-func ApproveERC20(ctx *testframework.TestFrameworkContext, erc20ContractAddress, ethPriKey string, amount uint64) error {
+func ApproveERC20(ctx *testframework.TestFrameworkContext, erc20ContractAddress string,
+	ethSigner *utils.EthSigner, amount uint64) error {
 	gasPrice, err := ctx.EthClient.SuggestGasPrice(context.Background())
 	if err != nil {
 		return fmt.Errorf("ApproveERC20, get suggest sas price failed error: %s", err.Error())
@@ -292,20 +292,15 @@ func ApproveERC20(ctx *testframework.TestFrameworkContext, erc20ContractAddress,
 	}
 
 	contractAddr := ethcommon.HexToAddress(erc20ContractAddress)
-	priKey, err := crypto.HexToECDSA(ethPriKey)
-	if err != nil {
-		return fmt.Errorf("ApproveERC20, cannot decode private key")
-	}
-	fromAddress := crypto.PubkeyToAddress(priKey.PublicKey)
 	callMsg := ethereum.CallMsg{
-		From: fromAddress, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
+		From: ethSigner.Address, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
 		Value: big.NewInt(0), Data: txData,
 	}
 	gasLimit, err := ctx.EthClient.EstimateGas(context.Background(), callMsg)
 	if err != nil {
 		return fmt.Errorf("ApproveERC20, estimate gas limit error: %s", err.Error())
 	}
-	nonce := ctx.NonceManager.GetAddressNonce(fromAddress)
+	nonce := ctx.NonceManager.GetAddressNonce(ethSigner.Address)
 	tx := types.NewTransaction(nonce, contractAddr, big.NewInt(0), gasLimit, gasPrice, txData)
 	bf := new(bytes.Buffer)
 	rlp.Encode(bf, tx)
@@ -315,7 +310,7 @@ func ApproveERC20(ctx *testframework.TestFrameworkContext, erc20ContractAddress,
 	if err != nil {
 		return fmt.Errorf("ApproveERC20, utils.DeserializeTx error: %s", err.Error())
 	}
-	signedtx, err := types.SignTx(unsignedTx, types.HomesteadSigner{}, priKey)
+	signedtx, err := types.SignTx(unsignedTx, types.HomesteadSigner{}, ethSigner.PrivateKey)
 	if err != nil {
 		return fmt.Errorf("ApproveERC20, types.SignTx error: %s", err.Error())
 	}
@@ -328,7 +323,7 @@ func ApproveERC20(ctx *testframework.TestFrameworkContext, erc20ContractAddress,
 	return nil
 }
 
-func SendEthCrossOnt(ctx *testframework.TestFrameworkContext, ethPriKey, ontAddress string, amount uint64) error {
+func SendEthCrossOnt(ctx *testframework.TestFrameworkContext, ethSigner *utils.EthSigner, ontAddress string, amount uint64) error {
 	gasPrice, err := ctx.EthClient.SuggestGasPrice(context.Background())
 	if err != nil {
 		return fmt.Errorf("SendEthCrossOnt, get suggest gas price failed error: %s", err.Error())
@@ -349,13 +344,8 @@ func SendEthCrossOnt(ctx *testframework.TestFrameworkContext, ethPriKey, ontAddr
 	}
 
 	contractAddr := ethcommon.HexToAddress(config.DefConfig.EthProxyContract)
-	priKey, err := crypto.HexToECDSA(ethPriKey)
-	if err != nil {
-		return fmt.Errorf("SendEthCrossOnt, cannot decode private key")
-	}
-	fromAddress := crypto.PubkeyToAddress(priKey.PublicKey)
 	callMsg := ethereum.CallMsg{
-		From: fromAddress, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
+		From: ethSigner.Address, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
 		Value: big.NewInt(int64(amount)), Data: txData,
 	}
 	gasLimit, err := ctx.EthClient.EstimateGas(context.Background(), callMsg)
@@ -363,7 +353,7 @@ func SendEthCrossOnt(ctx *testframework.TestFrameworkContext, ethPriKey, ontAddr
 		return fmt.Errorf("SendEthCrossOnt, estimate gas limit error: %s", err.Error())
 	}
 
-	nonce := ctx.NonceManager.GetAddressNonce(fromAddress)
+	nonce := ctx.NonceManager.GetAddressNonce(ethSigner.Address)
 	tx := types.NewTransaction(nonce, contractAddr, big.NewInt(int64(amount)), gasLimit, gasPrice, txData)
 	bf := new(bytes.Buffer)
 	rlp.Encode(bf, tx)
@@ -373,7 +363,7 @@ func SendEthCrossOnt(ctx *testframework.TestFrameworkContext, ethPriKey, ontAddr
 	if err != nil {
 		return fmt.Errorf("SendEthCrossOnt, utils.DeserializeTx error: %s", err.Error())
 	}
-	signedtx, err := types.SignTx(unsignedTx, types.HomesteadSigner{}, priKey)
+	signedtx, err := types.SignTx(unsignedTx, types.HomesteadSigner{}, ethSigner.PrivateKey)
 	if err != nil {
 		return fmt.Errorf("SendEthCrossOnt, types.SignTx error: %s", err.Error())
 	}
@@ -386,7 +376,8 @@ func SendEthCrossOnt(ctx *testframework.TestFrameworkContext, ethPriKey, ontAddr
 	return nil
 }
 
-func SendERC20CrossOnt(ctx *testframework.TestFrameworkContext, erc20ContractAddress, ethPriKey, ontAddress string, amount uint64) error {
+func SendERC20CrossOnt(ctx *testframework.TestFrameworkContext, erc20ContractAddress, ontAddress string,
+	ethSigner *utils.EthSigner, amount uint64) error {
 	gasPrice, err := ctx.EthClient.SuggestGasPrice(context.Background())
 	if err != nil {
 		return fmt.Errorf("SendERC20CrossOnt, get suggest gas price failed error: %s", err.Error())
@@ -407,13 +398,8 @@ func SendERC20CrossOnt(ctx *testframework.TestFrameworkContext, erc20ContractAdd
 	}
 
 	contractAddr := ethcommon.HexToAddress(config.DefConfig.EthProxyContract)
-	priKey, err := crypto.HexToECDSA(ethPriKey)
-	if err != nil {
-		return fmt.Errorf("SendERC20CrossOnt, cannot decode private key")
-	}
-	fromAddress := crypto.PubkeyToAddress(priKey.PublicKey)
 	callMsg := ethereum.CallMsg{
-		From: fromAddress, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
+		From: ethSigner.Address, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
 		Value: big.NewInt(int64(0)), Data: txData,
 	}
 	gasLimit, err := ctx.EthClient.EstimateGas(context.Background(), callMsg)
@@ -421,7 +407,7 @@ func SendERC20CrossOnt(ctx *testframework.TestFrameworkContext, erc20ContractAdd
 		return fmt.Errorf("SendERC20CrossOnt, estimate gas limit error: %s", err.Error())
 	}
 
-	nonce := ctx.NonceManager.GetAddressNonce(fromAddress)
+	nonce := ctx.NonceManager.GetAddressNonce(ethSigner.Address)
 	tx := types.NewTransaction(nonce, contractAddr, big.NewInt(int64(0)), gasLimit, gasPrice, txData)
 	bf := new(bytes.Buffer)
 	rlp.Encode(bf, tx)
@@ -431,7 +417,7 @@ func SendERC20CrossOnt(ctx *testframework.TestFrameworkContext, erc20ContractAdd
 	if err != nil {
 		return fmt.Errorf("SendERC20CrossOnt, utils.DeserializeTx error: %s", err.Error())
 	}
-	signedtx, err := types.SignTx(unsignedTx, types.HomesteadSigner{}, priKey)
+	signedtx, err := types.SignTx(unsignedTx, types.HomesteadSigner{}, ethSigner.PrivateKey)
 	if err != nil {
 		return fmt.Errorf("SendERC20CrossOnt, types.SignTx error: %s", err.Error())
 	}
@@ -444,7 +430,7 @@ func SendERC20CrossOnt(ctx *testframework.TestFrameworkContext, erc20ContractAdd
 	return nil
 }
 
-func SendBtceCrossBtc(ctx *testframework.TestFrameworkContext, ethPriKey, ontAddress string, amount uint64) error {
+func SendBtceCrossBtc(ctx *testframework.TestFrameworkContext, ethSigner *utils.EthSigner, ontAddress string, amount uint64) error {
 	gasPrice, err := ctx.EthClient.SuggestGasPrice(context.Background())
 	if err != nil {
 		return fmt.Errorf("SendERC20CrossOnt, get suggest gas price failed error: %s", err.Error())
@@ -465,13 +451,8 @@ func SendBtceCrossBtc(ctx *testframework.TestFrameworkContext, ethPriKey, ontAdd
 	}
 
 	contractAddr := ethcommon.HexToAddress(config.DefConfig.EthProxyContract)
-	priKey, err := crypto.HexToECDSA(ethPriKey)
-	if err != nil {
-		return fmt.Errorf("SendERC20CrossOnt, cannot decode private key")
-	}
-	fromAddress := crypto.PubkeyToAddress(priKey.PublicKey)
 	callMsg := ethereum.CallMsg{
-		From: fromAddress, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
+		From: ethSigner.Address, To: &contractAddr, Gas: 0, GasPrice: gasPrice,
 		Value: big.NewInt(int64(0)), Data: txData,
 	}
 	gasLimit, err := ctx.EthClient.EstimateGas(context.Background(), callMsg)
@@ -479,7 +460,7 @@ func SendBtceCrossBtc(ctx *testframework.TestFrameworkContext, ethPriKey, ontAdd
 		return fmt.Errorf("SendERC20CrossOnt, estimate gas limit error: %s", err.Error())
 	}
 
-	nonce := ctx.NonceManager.GetAddressNonce(fromAddress)
+	nonce := ctx.NonceManager.GetAddressNonce(ethSigner.Address)
 	tx := types.NewTransaction(nonce, contractAddr, big.NewInt(int64(0)), gasLimit, gasPrice, txData)
 	bf := new(bytes.Buffer)
 	rlp.Encode(bf, tx)
@@ -489,7 +470,7 @@ func SendBtceCrossBtc(ctx *testframework.TestFrameworkContext, ethPriKey, ontAdd
 	if err != nil {
 		return fmt.Errorf("SendERC20CrossOnt, utils.DeserializeTx error: %s", err.Error())
 	}
-	signedtx, err := types.SignTx(unsignedTx, types.HomesteadSigner{}, priKey)
+	signedtx, err := types.SignTx(unsignedTx, types.HomesteadSigner{}, ethSigner.PrivateKey)
 	if err != nil {
 		return fmt.Errorf("SendERC20CrossOnt, types.SignTx error: %s", err.Error())
 	}
