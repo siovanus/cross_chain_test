@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/btcsuite/btcd/chaincfg"
 	"io/ioutil"
 	"math/rand"
 	"net/http"
@@ -24,6 +25,28 @@ import (
 	"github.com/ontio/multi-chain/native/service/cross_chain_manager/btc"
 	"github.com/ontio/ontology/common"
 )
+
+type BtcSigner struct {
+	WIF     *btcutil.WIF
+	Address string
+}
+
+func NewBtcSigner(privateKey string) (*BtcSigner, error) {
+	wif, err := btcutil.DecodeWIF(privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("NewBtcSigner, failed to decode wif: %v", err)
+	}
+
+	addrPubk, err := btcutil.NewAddressPubKey(wif.PrivKey.PubKey().SerializeCompressed(), &chaincfg.TestNet3Params)
+	if err != nil {
+		return nil, fmt.Errorf("sendBtcCross, Failed to new an address pubkey: %v", err)
+	}
+	address := addrPubk.EncodeAddress()
+	return &BtcSigner{
+		WIF:     wif,
+		Address: address,
+	}, nil
+}
 
 func RandomInt64(min, max int64) int64 {
 	r := rand.New(rand.NewSource(time.Now().Unix()))

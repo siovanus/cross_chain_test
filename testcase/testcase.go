@@ -27,6 +27,7 @@ import (
 
 var ontSigner1 *ontology_go_sdk.Account
 var ethSigner1 *utils.EthSigner
+var btcSigner1 *utils.BtcSigner
 
 func InitAccount() {
 	var err error
@@ -41,12 +42,27 @@ func InitAccount() {
 		fmt.Printf("init, utils.NewEthSigner error: %s", err)
 		os.Exit(1)
 	}
+
+	btcSigner1, err = utils.NewBtcSigner("cRRMYvoHPNQu1tCz4ajPxytBVc2SN6GWLAVuyjzm4MVwyqZVrAcX")
+	if err != nil {
+		fmt.Printf("init, utils.NewBtcSigner error: %s", err)
+		os.Exit(1)
+	}
 }
 
 func SendOntToEthChain(ctx *testframework.TestFrameworkContext) bool {
 	err := SendOntCrossEth(ctx, ontSigner1, ethSigner1, 100)
 	if err != nil {
 		ctx.LogError("SendOntToEthChain, SendOntCrossEth error: %s", err)
+		return false
+	}
+	return true
+}
+
+func SendBtcToOntChain(ctx *testframework.TestFrameworkContext) bool {
+	err := SendBtcCrossOnt(ctx, btcSigner1, ontSigner1.Address.ToBase58(), 1000)
+	if err != nil {
+		ctx.LogError("SendBtcToOntChain, SendBtcCrossOnt error: %s", err)
 		return false
 	}
 	return true

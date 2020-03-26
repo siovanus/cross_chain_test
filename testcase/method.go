@@ -132,12 +132,12 @@ func SendOEP4CrossEth(ctx *testframework.TestFrameworkContext, contractAddress s
 }
 
 func SendBtcoCrossBtc(ctx *testframework.TestFrameworkContext, signer *ontology_go_sdk.Account,
-	btcAddress string, amount uint64) error {
+	btcSigner *utils.BtcSigner, amount uint64) error {
 	btcxContractAddress, err := ontcommon.AddressFromHexString(config.DefConfig.BtcoContractAddress)
 	if err != nil {
 		return fmt.Errorf("SendBtcxCrossBtc, ontcommon.AddressFromHexString error: %s", err)
 	}
-	to := hex.EncodeToString([]byte(btcAddress))
+	to := hex.EncodeToString([]byte(btcSigner.Address))
 	txHash, err := ctx.OntSdk.NeoVM.InvokeNeoVMContract(config.DefConfig.GasPrice, config.DefConfig.GasLimit,
 		signer,
 		signer,
@@ -150,25 +150,30 @@ func SendBtcoCrossBtc(ctx *testframework.TestFrameworkContext, signer *ontology_
 	return nil
 }
 
-func SendBtcCrossOnt(ctx *testframework.TestFrameworkContext, btcPriKey, ontAddress string, amount int64) error {
-	err := sendBtcCross(ctx, config.ONT_CHAIN_ID, btcPriKey, ontAddress, amount)
-	return fmt.Errorf("SendBtcCrossOnt, sendBtcCross error: %s", err)
+func SendBtcCrossOnt(ctx *testframework.TestFrameworkContext, btcSigner *utils.BtcSigner,
+	ontAddress string, amount int64) error {
+	err := sendBtcCross(ctx, config.ONT_CHAIN_ID, btcSigner, ontAddress, amount)
+	if err != nil {
+		return fmt.Errorf("SendBtcCrossOnt, sendBtcCross error: %s", err)
+	}
+	return nil
 }
 
-func SendBtcCrossEth(ctx *testframework.TestFrameworkContext, btcPriKey, ontAddress string, amount int64) error {
-	err := sendBtcCross(ctx, config.ETH_CHAIN_ID, btcPriKey, ontAddress, amount)
-	return fmt.Errorf("SendBtcCrossEth, sendBtcCross error: %s", err)
+func SendBtcCrossEth(ctx *testframework.TestFrameworkContext, btcSigner *utils.BtcSigner,
+	ontAddress string, amount int64) error {
+	err := sendBtcCross(ctx, config.ETH_CHAIN_ID, btcSigner, ontAddress, amount)
+	if err != nil {
+		return fmt.Errorf("SendBtcCrossEth, sendBtcCross error: %s", err)
+	}
+	return nil
 }
 
-func sendBtcCross(ctx *testframework.TestFrameworkContext, chainID uint64, btcPriKey, ontAddress string, amount int64) error {
+func sendBtcCross(ctx *testframework.TestFrameworkContext, chainID uint64, btcSigner *utils.BtcSigner,
+	ontAddress string, amount int64) error {
 	value := float64(amount) / btcutil.SatoshiPerBitcoin
 	fee := float64(config.DefConfig.BtcFee) / btcutil.SatoshiPerBitcoin
-	wif, err := btcutil.DecodeWIF(btcPriKey)
-	if err != nil {
-		return fmt.Errorf("sendBtcCross, failed to decode wif: %v", err)
-	}
 
-	addrPubk, err := btcutil.NewAddressPubKey(wif.PrivKey.PubKey().SerializeCompressed(), &chaincfg.TestNet3Params)
+	addrPubk, err := btcutil.NewAddressPubKey(btcSigner.WIF.PrivKey.PubKey().SerializeCompressed(), &chaincfg.TestNet3Params)
 	if err != nil {
 		return fmt.Errorf("sendBtcCross, Failed to new an address pubkey: %v", err)
 	}
@@ -226,7 +231,7 @@ HERE:
 		Inputs:       ipts,
 		NetParam:     &chaincfg.TestNet3Params,
 		PrevPkScript: pubkScript,
-		Privk:        wif.PrivKey,
+		Privk:        btcSigner.WIF.PrivKey,
 		Locktime:     nil,
 		ToMultiValue: value,
 		Changes: func() map[string]float64 {
