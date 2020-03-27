@@ -27,7 +27,7 @@ func MonitorOnt(ctx *TestFrameworkContext) {
 				continue
 			}
 
-			ctx.LogInfo("ont chain current height: %d", currentHeight)
+			//ctx.LogInfo("ont chain current height: %d", currentHeight)
 
 			if currentHeight <= ontHeight {
 				continue
@@ -52,7 +52,7 @@ func parseOntologyChainBlock(ctx *TestFrameworkContext, height uint32) error {
 		return err
 	}
 
-	ctx.LogInfo("parseOntologyChainBlock, ont chain block height: %d, events num: %d", height, len(events))
+	//ctx.LogInfo("parseOntologyChainBlock, ont chain block height: %d, events num: %d", height, len(events))
 	for _, event := range events {
 		for _, notify := range event.Notify {
 			if notify.ContractAddress != "0900000000000000000000000000000000000000" {
@@ -97,7 +97,7 @@ func MonitorEthChain(ctx *TestFrameworkContext) {
 				continue
 			}
 
-			ctx.LogInfo("eth chain current height: %d", currentHeight)
+			//ctx.LogInfo("eth chain current height: %d", currentHeight)
 
 			if uint32(currentHeight) <= ethHeight {
 				continue
@@ -122,7 +122,7 @@ func parseEthChainBlock(ctx *TestFrameworkContext, height uint32) error {
 	if err != nil {
 		return err
 	}
-	ctx.LogInfo("eth chain, block height: %d, unlock events num: %d, lock events num: %d", height, len(unlockevents), len(lockevents))
+	//ctx.LogInfo("eth chain, block height: %d, unlock events num: %d, lock events num: %d", height, len(unlockevents), len(lockevents))
 	for _, event := range lockevents {
 		// try to get all data
 		//
@@ -174,7 +174,7 @@ func MonitorRChain(ctx *TestFrameworkContext) {
 				continue
 			}
 
-			ctx.LogInfo("rc chain current height: %d", currentHeight)
+			//ctx.LogInfo("rc chain current height: %d", currentHeight)
 
 			if currentHeight <= rcHeight {
 				continue
@@ -199,7 +199,7 @@ func parseRelayChainBlock(ctx *TestFrameworkContext, height uint32) error {
 		return err
 	}
 
-	ctx.LogInfo("parseRelayChainBlock, relay chain block height: %d, events num: %d", height, len(events))
+	//ctx.LogInfo("parseRelayChainBlock, relay chain block height: %d, events num: %d", height, len(events))
 	for _, event := range events {
 		for _, notify := range event.Notify {
 			states, ok := notify.States.([]interface{})

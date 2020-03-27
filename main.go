@@ -95,7 +95,7 @@ func waitToExit() {
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	go func() {
 		for sig := range sc {
-			fmt.Println("Ontology received exit signal:%v.", sig.String())
+			fmt.Println("cross chain test received exit signal: ", sig.String())
 			close(exit)
 			break
 		}
