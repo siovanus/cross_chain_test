@@ -59,8 +59,17 @@ func SendOntToEthChain(ctx *testframework.TestFrameworkContext) bool {
 	return true
 }
 
+func SendBtcoToBtcChain(ctx *testframework.TestFrameworkContext) bool {
+	err := SendBtcoCrossBtc(ctx, ontSigner1, btcSigner1, 1000)
+	if err != nil {
+		ctx.LogError("SendBtcoToBtcChain, SendBtcoCrossBtc error: %s", err)
+		return false
+	}
+	return true
+}
+
 func SendBtcToOntChain(ctx *testframework.TestFrameworkContext) bool {
-	err := SendBtcCrossOnt(ctx, btcSigner1, ontSigner1.Address.ToBase58(), 1000)
+	err := SendBtcCrossOnt(ctx, btcSigner1, ontSigner1.Address.ToBase58(), 10000)
 	if err != nil {
 		ctx.LogError("SendBtcToOntChain, SendBtcCrossOnt error: %s", err)
 		return false

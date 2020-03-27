@@ -144,12 +144,12 @@ func SendBtcoCrossBtc(ctx *testframework.TestFrameworkContext, signer *ontology_
 	if err != nil {
 		return fmt.Errorf("SendBtcxCrossBtc, ontcommon.AddressFromHexString error: %s", err)
 	}
-	to := hex.EncodeToString([]byte(btcSigner.Address))
+	to := []byte(btcSigner.Address)
 	txHash, err := ctx.OntSdk.NeoVM.InvokeNeoVMContract(config.DefConfig.GasPrice, config.DefConfig.GasLimit,
 		signer,
 		signer,
 		btcxContractAddress,
-		[]interface{}{"lock", []interface{}{config.ETH_CHAIN_ID, signer.Address[:], to, amount}})
+		[]interface{}{"lock", []interface{}{config.BTC_CHAIN_ID, signer.Address[:], to, amount}})
 	if err != nil {
 		return fmt.Errorf("SendBtcxCrossBtc, ctx.Ont.NeoVM.InvokeNeoVMContract error: %s", err)
 	}
@@ -475,7 +475,7 @@ func SendBtceCrossBtc(ctx *testframework.TestFrameworkContext, ethSigner *utils.
 		return fmt.Errorf("SendERC20CrossOnt, ontcommon.AddressFromBase58 error:" + err.Error())
 	}
 	assetaddress := ethcommon.HexToAddress(config.DefConfig.BtceContractAddress)
-	txData, err := contractabi.Pack("lock", assetaddress, uint64(config.ONT_CHAIN_ID), toAddress[:],
+	txData, err := contractabi.Pack("lock", assetaddress, uint64(config.BTC_CHAIN_ID), toAddress[:],
 		big.NewInt(int64(amount)))
 	if err != nil {
 		return fmt.Errorf("SendERC20CrossOnt, contractabi.Pack error:" + err.Error())

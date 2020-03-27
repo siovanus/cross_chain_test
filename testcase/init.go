@@ -22,5 +22,6 @@ import "github.com/ontio/cross_chain_test/testframework"
 //TestCase list
 func init() {
 	testframework.TFramework.RegTestCase("SendOntToEthChain", SendOntToEthChain)
+	testframework.TFramework.RegTestCase("SendBtcoToBtcChain", SendBtcoToBtcChain)
 	testframework.TFramework.RegTestCase("SendBtcToOntChain", SendBtcToOntChain)
 }

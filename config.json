@@ -3,7 +3,7 @@
   "BtcRestUser": "test",
   "BtcRestPwd": "test",
   "BtceContractAddress": "",
-  "BtcoContractAddress": "",
+  "BtcoContractAddress": "235d7d9551b67887388bfb15b70363f6ce428541",
   "BtcFee": 1500,
   "BtcRedeem": "522103209115d42b9099aae6dbae3eaf828d02d5a893ddc144aaeeeea4ea94bdf7919d2103e12c2c1a02bacf6f723f789c401ef47524369c9e0a70b167d85506c7e9ad60af2103b41527011fc49de3674f0d349ca642b8427d3e73ba9905845f831573f0dac7f953ae",
   "EthURL": "https://ropsten.infura.io/v3/1ba5f3635395470e9a3f19ba7a852144",
